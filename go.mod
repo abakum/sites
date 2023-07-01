@@ -8,3 +8,5 @@ require (
 	github.com/xlab/closer v1.1.0
 	golang.org/x/sys v0.0.0-20220908164124-27713097b956
 )
+
+require github.com/Trisia/gosysproxy v1.0.0
