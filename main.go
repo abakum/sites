@@ -4,11 +4,18 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"syscall"
+	"time"
 
 	"github.com/Trisia/gosysproxy"
 	"github.com/fsnotify/fsnotify"
 	"github.com/xlab/closer"
 	"golang.org/x/sys/windows/registry"
+)
+
+const (
+	darkPath = `SOFTWARE\Policies\Microsoft\Internet Explorer\Control Panel`
+	darkKey  = "Autoconfig"
 )
 
 func main() {
@@ -19,10 +26,11 @@ func main() {
 		UATDATA = os.Getenv("UATDATA")
 		CCM     = `c:\Windows\CCM`
 		// trigger   = `c:\Windows\CCM\Logs\UpdateTrustedSites.log`
-		trigger = `trigger.log`
+		changed = make(chan bool, 10)
 	)
 	defer closer.Close()
 	closer.Bind(func() {
+		close(changed)
 		if err != nil {
 			let.Println(err)
 			defer os.Exit(1)
@@ -44,46 +52,55 @@ func main() {
 		CCM = filepath.Dir(UATDATA)
 		CCM = filepath.Dir(CCM)
 	}
-	logs := filepath.Join(CCM, "Logs")
-	err = watcher.Add(logs)
+	err = watcher.Add(filepath.Join(CCM, "Logs"))
 	if err != nil {
 		err = srcError(err)
 		return
 	}
 	ltf.Println(watcher.WatchList())
 
+	// https://gist.github.com/jerblack/1d05bbcebb50ad55c312e4d7cf1bc909
+	advapi32, err := syscall.LoadDLL("Advapi32.dll")
+	if err != nil {
+		err = srcError(err)
+		return
+	}
+	regNotifyChangeKeyValue, err := advapi32.FindProc("RegNotifyChangeKeyValue")
+	if err != nil {
+		err = srcError(err)
+		return
+	}
 	go func() {
-		fn := filepath.Join(logs, trigger)
-		if os.WriteFile(fn, []byte{'\n'}, 0644) != nil {
-			return
+		for {
+			k, err := registry.OpenKey(registry.CURRENT_USER, darkPath, syscall.KEY_NOTIFY)
+			if err == nil {
+				regNotifyChangeKeyValue.Call(uintptr(k), 0, 0x00000001|0x00000004, 0, 0)
+				changed <- true
+				k.Close()
+			} else {
+				letf.Println("OpenKey")
+			}
+			time.Sleep(time.Second)
 		}
-		os.Remove(fn)
 	}()
 
+	changed <- true
 	// Start listening for events.
 	for {
 		select {
+		case _, ok = <-changed:
+			if !ok {
+				return
+			}
+			ltf.Println(darkPath)
+			fix()
 		case event, ok = <-watcher.Events:
 			if !ok {
 				return
 			}
 			if event.Has(fsnotify.Write) { //&& event.Name == trigger
 				ltf.Println(event.Name)
-				if dWordValue(registry.CURRENT_USER,
-					`SOFTWARE\Policies\Microsoft\Internet Explorer\Control Panel`,
-					"Autoconfig",
-					0,
-				) || stringValue(registry.CURRENT_USER,
-					`Software\Microsoft\Windows\CurrentVersion\Internet Settings`,
-					"AutoConfigURL",
-					"",
-				) || stringValue(registry.CURRENT_USER,
-					`SOFTWARE\Policies\YandexBrowser`,
-					"ProxyMode",
-					"direct",
-				) {
-					PrintOk("gosysproxy.Off", gosysproxy.Off())
-				}
+				fix()
 			}
 		case err, ok = <-watcher.Errors:
 			if !ok {
@@ -91,6 +108,24 @@ func main() {
 			}
 			letf.Println(err)
 		}
+	}
+}
+
+func fix() {
+	if dWordValue(registry.CURRENT_USER,
+		darkPath,
+		darkKey,
+		0,
+	) || stringValue(registry.CURRENT_USER,
+		`Software\Microsoft\Windows\CurrentVersion\Internet Settings`,
+		"AutoConfigURL",
+		"",
+	) || stringValue(registry.CURRENT_USER,
+		`SOFTWARE\Policies\YandexBrowser`,
+		"ProxyMode",
+		"direct",
+	) {
+		PrintOk("gosysproxy.Off", gosysproxy.Off())
 	}
 }
 
