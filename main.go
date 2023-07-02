@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"os"
 	"path/filepath"
 	"syscall"
@@ -18,6 +17,10 @@ const (
 	darkKey  = "Autoconfig"
 )
 
+var (
+	regNotifyChangeKeyValue *syscall.Proc
+)
+
 func main() {
 	var (
 		err     error
@@ -26,7 +29,7 @@ func main() {
 		UATDATA = os.Getenv("UATDATA")
 		CCM     = `c:\Windows\CCM`
 		// trigger   = `c:\Windows\CCM\Logs\UpdateTrustedSites.log`
-		changed = make(chan bool, 10)
+		advapi32 *syscall.DLL
 	)
 	defer closer.Close()
 	closer.Bind(func() {
@@ -60,47 +63,28 @@ func main() {
 	ltf.Println(watcher.WatchList())
 
 	// https://gist.github.com/jerblack/1d05bbcebb50ad55c312e4d7cf1bc909
-	advapi32, err := syscall.LoadDLL("Advapi32.dll")
+	advapi32, err = syscall.LoadDLL("Advapi32.dll")
 	if err != nil {
 		err = srcError(err)
 		return
 	}
-	regNotifyChangeKeyValue, err := advapi32.FindProc("RegNotifyChangeKeyValue")
+	regNotifyChangeKeyValue, err = advapi32.FindProc("RegNotifyChangeKeyValue")
 	if err != nil {
 		err = srcError(err)
 		return
 	}
-	go func() {
-		for {
-			k, err := registry.OpenKey(registry.CURRENT_USER, darkPath, syscall.KEY_NOTIFY)
-			if err == nil {
-				regNotifyChangeKeyValue.Call(uintptr(k), 0, 0x00000001|0x00000004, 0, 0)
-				changed <- true
-				k.Close()
-			} else {
-				letf.Println("OpenKey")
-			}
-			time.Sleep(time.Second)
-		}
-	}()
+	go anyWatch(registry.CURRENT_USER, darkPath, darkKey, 0)
+	go anyWatch(registry.CURRENT_USER, `SOFTWARE\Policies\YandexBrowser`, "ProxyMode", "direct")
 
-	changed <- true
 	// Start listening for events.
 	for {
 		select {
-		case _, ok = <-changed:
-			if !ok {
-				return
-			}
-			ltf.Println(darkPath)
-			fix()
 		case event, ok = <-watcher.Events:
 			if !ok {
 				return
 			}
-			if event.Has(fsnotify.Write) { //&& event.Name == trigger
+			if event.Has(fsnotify.Write) {
 				ltf.Println(event.Name)
-				fix()
 			}
 		case err, ok = <-watcher.Errors:
 			if !ok {
@@ -111,48 +95,107 @@ func main() {
 	}
 }
 
-func fix() {
-	if dWordValue(registry.CURRENT_USER,
-		darkPath,
-		darkKey,
-		0,
-	) || stringValue(registry.CURRENT_USER,
-		`Software\Microsoft\Windows\CurrentVersion\Internet Settings`,
-		"AutoConfigURL",
-		"",
-	) || stringValue(registry.CURRENT_USER,
-		`SOFTWARE\Policies\YandexBrowser`,
-		"ProxyMode",
-		"direct",
-	) {
-		PrintOk("gosysproxy.Off", gosysproxy.Off())
+func anyWatch(root registry.Key, path, key string, val any) {
+	fn := func(root registry.Key, path, key string, val any) error {
+		return Errorf("wrong type of val")
 	}
-}
-
-func stringValue(root registry.Key, path, key, val string) bool {
-	k, err := registry.OpenKey(registry.CURRENT_USER, path, registry.QUERY_VALUE|registry.SET_VALUE)
-	if err == nil {
-		defer k.Close()
-		old, _, err := k.GetStringValue(key)
-		if err == nil && old != val {
-			err = k.SetStringValue(key, val)
-			PrintOk(fmt.Sprintf("%s-%s-%v->%v", path, key, old, val), err)
-			return err == nil
+	switch value := val.(type) {
+	case int:
+		fn = func(root registry.Key, path, key string, val any) error {
+			k, err := registry.OpenKey(root, path, registry.QUERY_VALUE|registry.SET_VALUE)
+			if err != nil {
+				return srcError(err)
+			}
+			defer k.Close()
+			old, _, err := k.GetIntegerValue(key)
+			if err != nil {
+				return srcError(err)
+			}
+			if uint32(old) != uint32(value) {
+				err = k.SetDWordValue(key, uint32(value))
+				if err != nil {
+					return srcError(err)
+				}
+				ltf.Printf(`%s\%s %v->%v`, path, key, old, val)
+				PrintOk("gosysproxy.Off", gosysproxy.Off())
+			}
+			return nil
+		}
+	case uint32:
+		fn = func(root registry.Key, path, key string, val any) error {
+			k, err := registry.OpenKey(root, path, registry.QUERY_VALUE|registry.SET_VALUE)
+			if err != nil {
+				return srcError(err)
+			}
+			defer k.Close()
+			old, _, err := k.GetIntegerValue(key)
+			if err != nil {
+				return srcError(err)
+			}
+			if uint32(old) != value {
+				err = k.SetDWordValue(key, value)
+				if err != nil {
+					return srcError(err)
+				}
+				ltf.Printf(`%s\%s %v->%v`, path, key, old, val)
+				PrintOk("gosysproxy.Off", gosysproxy.Off())
+			}
+			return nil
+		}
+	case uint64:
+		fn = func(root registry.Key, path, key string, val any) error {
+			k, err := registry.OpenKey(root, path, registry.QUERY_VALUE|registry.SET_VALUE)
+			if err != nil {
+				return srcError(err)
+			}
+			defer k.Close()
+			old, _, err := k.GetIntegerValue(key)
+			if err != nil {
+				return srcError(err)
+			}
+			if uint64(old) != value {
+				err = k.SetQWordValue(key, value)
+				if err != nil {
+					return srcError(err)
+				}
+				ltf.Printf(`%s\%s %v->%v`, path, key, old, val)
+				PrintOk("gosysproxy.Off", gosysproxy.Off())
+			}
+			return nil
+		}
+	case string:
+		fn = func(root registry.Key, path, key string, val any) error {
+			k, err := registry.OpenKey(root, path, registry.QUERY_VALUE|registry.SET_VALUE)
+			if err != nil {
+				return srcError(err)
+			}
+			defer k.Close()
+			old, _, err := k.GetStringValue(key)
+			if err != nil {
+				return srcError(err)
+			}
+			if old != value {
+				err = k.SetStringValue(key, value)
+				if err != nil {
+					return srcError(err)
+				}
+				ltf.Printf(`%s\%s %v->%v`, path, key, old, val)
+				PrintOk("gosysproxy.Off", gosysproxy.Off())
+			}
+			return nil
 		}
 	}
-	return false
-}
-
-func dWordValue(root registry.Key, path, key string, val uint32) bool {
-	k, err := registry.OpenKey(root, path, registry.QUERY_VALUE|registry.SET_VALUE)
-	if err == nil {
-		defer k.Close()
-		old, _, err := k.GetIntegerValue(key)
-		if err == nil && uint32(old) != val {
-			err = k.SetDWordValue(key, val)
-			PrintOk(fmt.Sprintf("%s-%s-%v->%v", path, key, old, val), err)
-			return err == nil
+	for {
+		PrintOk(key, fn(root, path, key, val))
+		k, err := registry.OpenKey(root, path, syscall.KEY_NOTIFY)
+		err = srcError(err)
+		if err == nil {
+			regNotifyChangeKeyValue.Call(uintptr(k), 0, 0x00000001|0x00000004, 0, 0)
+			err = srcError(k.Close())
+		}
+		if err != nil {
+			let.Println(err)
+			time.Sleep(time.Second)
 		}
 	}
-	return false
 }
