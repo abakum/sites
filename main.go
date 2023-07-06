@@ -50,20 +50,16 @@ func main() {
 	closer.Hold()
 }
 
-// restore reg key
-// восстанавливает реестр
+// watch and restore reg key
+// следит за восстанавлением реестра
 func anyWatch(ctx context.Context, wg *sync.WaitGroup, root registry.Key,
 	path, key string, val any, after func()) {
 
 	const (
-		REG_NOTIFY_CHANGE_NAME     = uintptr(1)
-		REG_NOTIFY_CHANGE_LAST_SET = uintptr(4)
-		tryAfter                   = time.Second
+		tryAfter = time.Second
 	)
 	var (
-		fn                      func(k registry.Key) (bool, any, error)
-		advapi32                = windows.NewLazySystemDLL("advapi32.dll")
-		regNotifyChangeKeyValue = advapi32.NewProc("RegNotifyChangeKeyValue")
+		fn func(k registry.Key) (bool, any, error)
 	)
 
 	switch value := val.(type) {
@@ -162,7 +158,8 @@ func anyWatch(ctx context.Context, wg *sync.WaitGroup, root registry.Key,
 				// https://learn.microsoft.com/en-us/windows/win32/api/winreg/nf-winreg-regnotifychangekeyvalue
 				// If the specified key is closed, the event is signaled
 				// чтоб прервать regNotifyChangeKeyValue надо закрыть k
-				r0, _, err = regNotifyChangeKeyValue.Call(uintptr(k), 0, REG_NOTIFY_CHANGE_NAME|REG_NOTIFY_CHANGE_LAST_SET, 0, 0)
+				// r0, _, err = regNotifyChangeKeyValue.Call(uintptr(k), 0, REG_NOTIFY_CHANGE_NAME|REG_NOTIFY_CHANGE_LAST_SET, 0, 0)
+				regNotifyChangeKeyValue(windows.Handle(k), false, REG_NOTIFY_CHANGE_NAME|REG_NOTIFY_CHANGE_LAST_SET, 0, false)
 				notify <- struct{}{}
 			}()
 			select {

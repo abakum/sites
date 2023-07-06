@@ -4,3 +4,5 @@ github.com/xlab/closer v1.1.0 h1:yrDiOXjd/B7pZ3lZkl/EZ1gWrR2M2N5XpBnixynm4mc=
 github.com/xlab/closer v1.1.0/go.mod h1:Ff8YcUPbn5jju6nClrMCmJHQABM0S/obEK0za/1yVMk=
 golang.org/x/sys v0.0.0-20220908164124-27713097b956 h1:XeJjHH1KiLpKGb6lvMiksZ9l0fVUh+AmGcm0nOMEBOY=
 golang.org/x/sys v0.0.0-20220908164124-27713097b956/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
+golang.org/x/sys v0.10.0 h1:SqMFp9UcQJZa+pmYuAKjd9xq1f0j5rLcDIk0mj4qAsA=
+golang.org/x/sys v0.10.0/go.mod h1:oPkhp1MJrh7nUepCBck5+mAzfO9JrbApNNgaTdGDITg=
