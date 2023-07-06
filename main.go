@@ -121,7 +121,7 @@ func anyWatch(ctx context.Context, wg *sync.WaitGroup, root registry.Key,
 
 	ltf.Println(key)
 	try := make(chan struct{})
-	notify := make(chan struct{})
+	notify := make(chan error)
 	for {
 		go func() {
 			// wait until the cause of the error disappears or until the detected changes in the registry run out
@@ -153,24 +153,21 @@ func anyWatch(ctx context.Context, wg *sync.WaitGroup, root registry.Key,
 				}
 			}
 			// wait for change
-			var r0 uintptr
 			go func() {
 				// https://learn.microsoft.com/en-us/windows/win32/api/winreg/nf-winreg-regnotifychangekeyvalue
 				// If the specified key is closed, the event is signaled
 				// чтоб прервать regNotifyChangeKeyValue надо закрыть k
-				// r0, _, err = regNotifyChangeKeyValue.Call(uintptr(k), 0, REG_NOTIFY_CHANGE_NAME|REG_NOTIFY_CHANGE_LAST_SET, 0, 0)
-				regNotifyChangeKeyValue(windows.Handle(k), false, REG_NOTIFY_CHANGE_NAME|REG_NOTIFY_CHANGE_LAST_SET, 0, false)
-				notify <- struct{}{}
+				notify <- srcError(windows.RegNotifyChangeKeyValue(windows.Handle(k), false, windows.REG_NOTIFY_CHANGE_LAST_SET, 0, false)) //windows.REG_NOTIFY_CHANGE_NAME|
 			}()
 			select {
 			case <-ctx.Done():
 				ltf.Println(key, "notify done")
 				k.Close() // cancel regNotifyChangeKeyValue
 				return    // done
-			case <-notify:
+			case err = <-notify:
 				k.Close()
-				if r0 != 0 {
-					letf.Println(err)
+				if err != nil {
+					let.Println(err)
 				}
 			}
 		}
