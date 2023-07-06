@@ -44,8 +44,8 @@ func main() {
 		`SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System`, "DisableLockWorkstation", 1, nil)
 
 	// go func() {
-	// 	time.Sleep(time.Second * 3) // test cancel async
-	// 	ca()                        // test cancel anyWatch
+	// 	time.Sleep(time.Second * 3) // test notify done
+	// 	ca()                        // test try done
 	// }()
 	closer.Hold()
 }
