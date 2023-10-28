@@ -1,0 +1,71 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"type": "shell",
+			"label": "go-winres make",
+			"command": "go-winres make --product-version=git-tag --file-version=git-tag",
+			"group": "build",
+		},
+		{
+			"type": "shell",
+			"label": "GOARCH=386;go-winres make;go build ./...",
+			"command":"go-winres make --product-version=git-tag --file-version=git-tag; go build ./...",
+			"options": {
+				"env": {
+					"GOARCH": "386"
+				}
+			},
+			"problemMatcher": [
+				"$go"
+			],
+			"group": "build",
+		},
+		{
+			"type": "shell",
+			"label": "GOARCH=386;go-winres make;go install",
+			"command":"go-winres make --product-version=git-tag --file-version=git-tag;go build -o r:\\PortableApps",
+			"options": {
+				"env": {
+					"GOARCH": "386",
+				}
+			},
+			"problemMatcher": [
+				"$go"
+			],
+			"group": "build",
+		},
+		{
+			"type": "shell",
+			"label": "GOARCH=386;go install",
+			"command":"go build -o r:\\PortableApps",
+			"options": {
+				"env": {
+					"GOARCH": "386",
+				}
+			},
+			"problemMatcher": [
+				"$go"
+			],
+			"group": "build",
+		},
+		{
+			"type": "shell",
+			"label": "go-winres make;go build ./...",
+			"command":"go-winres make --product-version=git-tag --file-version=git-tag;go build ./...",
+			"problemMatcher": [
+				"$go"
+			],
+			"group": "build",
+		},
+		{
+			"type": "shell",
+			"label": "go run ./...",
+			"command":"go run ./...",
+			"problemMatcher": [
+				"$go"
+			],
+			"group": "build",
+		},
+	]
+}

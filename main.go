@@ -1,8 +1,19 @@
+// go get github.com/Trisia/gosysproxy
+// go get github.com/xlab/closer
+// go install github.com/tc-hib/go-winres@latest
+// go-winres init
+// git tag v0.1.1-lw
+// git push origin --tags
+
 package main
 
 import (
 	"context"
+	"fmt"
 	"os"
+	"os/exec"
+	"path/filepath"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -43,11 +54,40 @@ func main() {
 	go anyWatch(ctx, &wg, registry.CURRENT_USER,
 		`SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System`, "DisableLockWorkstation", 1, nil)
 
+	go anyWatch(ctx, &wg, registry.CURRENT_USER,
+		`SOFTWARE\Microsoft\Windows\Shell\Associations\UrlAssociations\http\UserChoice`, "ProgId", "ChromeHTML", func() { PrintOk("SetDefaultBrowser", SetDefaultBrowser()) })
+	// go anyWatch(ctx, &wg, registry.CURRENT_USER,
+	// 	`SOFTWARE\Microsoft\Windows\Shell\Associations\UrlAssociations\https\UserChoice`, "ProgId", "ChromeHTML", func() { PrintOk("SetDefaultBrowser", SetDefaultBrowser()) })
+
 	// go func() {
 	// 	time.Sleep(time.Second * 3) // test notify done
 	// 	ca()                        // test try done
 	// }()
 	closer.Hold()
+}
+
+func SetDefaultBrowser() (err error) {
+	cwd, err := os.Getwd()
+	if err != nil {
+		err = srcError(err)
+		return
+	}
+	exe := filepath.Join(cwd, "SetDefaultBrowser", "SetDefaultBrowser.exe")
+	sdb := exec.Command(exe, "chrome")
+	// sdb.Dir = filepath.Dir(sdb.Path)
+	sdb.Stdout = os.Stdout
+	sdb.Stderr = os.Stderr
+	lt.Println(cmd("Run", sdb))
+	err = sdb.Run()
+	time.Sleep(time.Second * 3)
+	return
+}
+
+func cmd(s string, c *exec.Cmd) string {
+	if c == nil {
+		return ""
+	}
+	return fmt.Sprintf(`%s "%s" %s`, s, c.Args[0], strings.Join(c.Args[1:], " "))
 }
 
 // watch and restore reg key
