@@ -2,7 +2,7 @@
 // go get github.com/xlab/closer
 // go install github.com/tc-hib/go-winres@latest
 // go-winres init
-// git tag v0.1.1-lw
+// git tag v0.1.2-lw
 // git push origin --tags
 
 package main
@@ -56,8 +56,6 @@ func main() {
 
 	go anyWatch(ctx, &wg, registry.CURRENT_USER,
 		`SOFTWARE\Microsoft\Windows\Shell\Associations\UrlAssociations\http\UserChoice`, "ProgId", "ChromeHTML", func() { PrintOk("SetDefaultBrowser", SetDefaultBrowser()) })
-	// go anyWatch(ctx, &wg, registry.CURRENT_USER,
-	// 	`SOFTWARE\Microsoft\Windows\Shell\Associations\UrlAssociations\https\UserChoice`, "ProgId", "ChromeHTML", func() { PrintOk("SetDefaultBrowser", SetDefaultBrowser()) })
 
 	// go func() {
 	// 	time.Sleep(time.Second * 3) // test notify done
@@ -73,13 +71,15 @@ func SetDefaultBrowser() (err error) {
 		return
 	}
 	exe := filepath.Join(cwd, "SetDefaultBrowser", "SetDefaultBrowser.exe")
-	sdb := exec.Command(exe, "chrome")
+	sdb := exec.Command(exe,
+		"chrome",
+		// "delay=1000",
+	)
 	// sdb.Dir = filepath.Dir(sdb.Path)
 	sdb.Stdout = os.Stdout
 	sdb.Stderr = os.Stderr
 	lt.Println(cmd("Run", sdb))
 	err = sdb.Run()
-	time.Sleep(time.Second * 3)
 	return
 }
 
@@ -189,7 +189,7 @@ func anyWatch(ctx context.Context, wg *sync.WaitGroup, root registry.Key,
 			if ok {
 				ltf.Printf(`%s\%s %v->%v`, path, key, old, val)
 				if after != nil {
-					after()
+					go after()
 				}
 			}
 			// wait for change
