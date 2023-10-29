@@ -64,6 +64,7 @@ func main() {
 	closer.Hold()
 }
 
+// run SetDefaultBrowser without parameters to list all Browsers on your system http://kolbi.cz/blog/?p=396
 func SetDefaultBrowser() (err error) {
 	cwd, err := os.Getwd()
 	if err != nil {
