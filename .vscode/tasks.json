@@ -24,7 +24,7 @@
 		{
 			"type": "shell",
 			"label": "GOARCH=386;ver.cmd;go install",
-			"command":"./ver.cmd;go build -o r:\\PortableApps\\ngrokVNC",
+			"command":"./ver.cmd;go build -o r:\\PortableApps",
 			"options": {
 				"env": {
 					"GOARCH": "386",
