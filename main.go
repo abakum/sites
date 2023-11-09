@@ -1,10 +1,9 @@
-// go get github.com/Trisia/gosysproxy
-// go get github.com/xlab/closer
-// go install github.com/tc-hib/go-winres@latest
-// go-winres init
-// git tag v0.1.2-lw
-// git push origin --tags
-
+/*
+go get github.com/Trisia/gosysproxy
+go get github.com/xlab/closer
+go install github.com/tc-hib/go-winres@latest
+go-winres init
+*/
 package main
 
 import (
@@ -56,6 +55,9 @@ func main() {
 
 	go anyWatch(ctx, &wg, registry.CURRENT_USER,
 		`SOFTWARE\Microsoft\Windows\Shell\Associations\UrlAssociations\http\UserChoice`, "ProgId", "ChromeHTML", func() { PrintOk("SetDefaultBrowser", SetDefaultBrowser()) })
+
+	go anyWatch(ctx, &wg, registry.CURRENT_USER,
+		`SOFTWARE\Classes\VncViewer.Config\DefaultIcon`, "", `C:\Program Files\uvnc bvba\UltraVNC\vncviewer.exe,0`, nil)
 
 	// go func() {
 	// 	time.Sleep(time.Second * 3) // test notify done

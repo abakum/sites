@@ -9,8 +9,8 @@
 		},
 		{
 			"type": "shell",
-			"label": "GOARCH=386;go-winres make;go build ./...",
-			"command":"go-winres make --product-version=git-tag --file-version=git-tag; go build ./...",
+			"label": "GOARCH=386;ver.cmd;go build ./...",
+			"command":"./ver.cmd;go build ./...",
 			"options": {
 				"env": {
 					"GOARCH": "386"
@@ -23,8 +23,8 @@
 		},
 		{
 			"type": "shell",
-			"label": "GOARCH=386;go-winres make;go install",
-			"command":"go-winres make --product-version=git-tag --file-version=git-tag;go build -o r:\\PortableApps",
+			"label": "GOARCH=386;ver.cmd;go install",
+			"command":"./ver.cmd;go build -o r:\\PortableApps\\ngrokVNC",
 			"options": {
 				"env": {
 					"GOARCH": "386",
@@ -37,22 +37,8 @@
 		},
 		{
 			"type": "shell",
-			"label": "GOARCH=386;go install",
-			"command":"go build -o r:\\PortableApps",
-			"options": {
-				"env": {
-					"GOARCH": "386",
-				}
-			},
-			"problemMatcher": [
-				"$go"
-			],
-			"group": "build",
-		},
-		{
-			"type": "shell",
-			"label": "go-winres make;go build ./...",
-			"command":"go-winres make --product-version=git-tag --file-version=git-tag;go build ./...",
+			"label": "ver.cmd;go build ./...",
+			"command":"./ver.cmd;go build ./...",
 			"problemMatcher": [
 				"$go"
 			],
