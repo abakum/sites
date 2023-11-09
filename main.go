@@ -1,4 +1,5 @@
 /*
+git clone github.com/abakum/sites
 go get github.com/Trisia/gosysproxy
 go get github.com/xlab/closer
 go install github.com/tc-hib/go-winres@latest
