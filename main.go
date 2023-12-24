@@ -44,11 +44,11 @@ func main() {
 	// HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Schedule\TaskCache\Tree\Microsoft\Windows\GroupPolicy\
 	// администратор через планировщик устанавливает ХОРОШИЕ значения в реестре
 	go anyWatch(ctx, &wg, registry.CURRENT_USER,
-		`SOFTWARE\Policies\Microsoft\Internet Explorer\Control Panel`, "Autoconfig", 0, func() { PrintOk("gosysproxy.Off", gosysproxy.Off()) })
-	// go anyWatch(registry.CURRENT_USER,
-	// 	`Software\Microsoft\Windows\CurrentVersion\Internet Settings`, "ProxyEnable", 0, func() { PrintOk("gosysproxy.Off", gosysproxy.Off()) })
+		`SOFTWARE\Policies\Microsoft\Internet Explorer\Control Panel`, "Autoconfig", 0, func() { PrintOk("gosysproxy", proxy()) })
+	// go anyWatch(ctx, &wg, registry.CURRENT_USER,
+	// 	`Software\Microsoft\Windows\CurrentVersion\Internet Settings`, "ProxyEnable", 0, func() { PrintOk("gosysproxy", proxy()) })
 	go anyWatch(ctx, &wg, registry.CURRENT_USER,
-		`SOFTWARE\Policies\YandexBrowser`, "ProxyMode", "direct", nil)
+		`SOFTWARE\Policies\YandexBrowser`, "ProxyMode", "direct", func() { PrintOk("gosysproxy", proxy()) })
 	go anyWatch(ctx, &wg, registry.CURRENT_USER,
 		`SOFTWARE\Policies\Microsoft\Windows\Control Panel\Desktop`, "ScreenSaveActive", "0", nil)
 	go anyWatch(ctx, &wg, registry.CURRENT_USER,
@@ -216,4 +216,10 @@ func anyWatch(ctx context.Context, wg *sync.WaitGroup, root registry.Key,
 			}
 		}
 	}
+}
+
+func proxy() error {
+	gosysproxy.SetPAC("")
+	gosysproxy.Off()
+	return nil
 }
