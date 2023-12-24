@@ -48,6 +48,9 @@ func main() {
 	// go anyWatch(ctx, &wg, registry.CURRENT_USER,
 	// 	`Software\Microsoft\Windows\CurrentVersion\Internet Settings`, "ProxyEnable", 0, func() { PrintOk("gosysproxy", proxy()) })
 	go anyWatch(ctx, &wg, registry.CURRENT_USER,
+		`Software\Microsoft\Windows\CurrentVersion\Internet Settings`, "AutoConfigURL", "", func() { PrintOk("gosysproxy", proxy()) })
+
+	go anyWatch(ctx, &wg, registry.CURRENT_USER,
 		`SOFTWARE\Policies\YandexBrowser`, "ProxyMode", "direct", func() { PrintOk("gosysproxy", proxy()) })
 	go anyWatch(ctx, &wg, registry.CURRENT_USER,
 		`SOFTWARE\Policies\Microsoft\Windows\Control Panel\Desktop`, "ScreenSaveActive", "0", nil)
@@ -146,7 +149,7 @@ func anyWatch(ctx context.Context, wg *sync.WaitGroup, root registry.Key,
 	case string:
 		fn = func(k registry.Key) (bool, any, error) {
 			old, _, err := k.GetStringValue(key)
-			if old != value || err != nil {
+			if old != value { // || err != nil
 				err = k.SetStringValue(key, value)
 				if err != nil {
 					return false, nil, srcError(err)
