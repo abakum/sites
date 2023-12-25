@@ -224,5 +224,11 @@ func anyWatch(ctx context.Context, wg *sync.WaitGroup, root registry.Key,
 func proxy() error {
 	gosysproxy.SetPAC("")
 	gosysproxy.Off()
-	return nil
+	cmd := exec.Command("netsh",
+		"winhttp",
+		"import",
+		"proxy",
+		"ie",
+	)
+	return cmd.Run()
 }
