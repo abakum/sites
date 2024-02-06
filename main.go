@@ -51,7 +51,7 @@ func main() {
 		`Software\Microsoft\Windows\CurrentVersion\Internet Settings`, "AutoConfigURL", "", func() { PrintOk("gosysproxy", proxy()) })
 
 	go anyWatch(ctx, &wg, registry.CURRENT_USER,
-		`SOFTWARE\Policies\YandexBrowser`, "ProxyMode", "direct", func() { PrintOk("gosysproxy", proxy()) })
+		`SOFTWARE\Policies\YandexBrowser`, "ProxyMode", "direct", nil)
 	go anyWatch(ctx, &wg, registry.CURRENT_USER,
 		`SOFTWARE\Policies\Microsoft\Windows\Control Panel\Desktop`, "ScreenSaveActive", "0", nil)
 	go anyWatch(ctx, &wg, registry.CURRENT_USER,
@@ -60,8 +60,14 @@ func main() {
 	go anyWatch(ctx, &wg, registry.CURRENT_USER,
 		`SOFTWARE\Microsoft\Windows\Shell\Associations\UrlAssociations\http\UserChoice`, "ProgId", "ChromeHTML", func() { PrintOk("SetDefaultBrowser", SetDefaultBrowser()) })
 
-	go anyWatch(ctx, &wg, registry.CURRENT_USER,
-		`SOFTWARE\Classes\VncViewer.Config\DefaultIcon`, "", `C:\Program Files\uvnc bvba\UltraVNC\vncviewer.exe,0`, nil)
+	go anyWatch(ctx, &wg, registry.LOCAL_MACHINE,
+		`SOFTWARE\Policies\Microsoft\Windows Defender`, "DisableAntiSpyware", 0, nil)
+
+	go anyWatch(ctx, &wg, registry.LOCAL_MACHINE,
+		`SOFTWARE\Policies\Microsoft\Windows Defender\Real-Time Protection`, "DisableRealtimeMonitoring", 0, nil)
+
+	// go anyWatch(ctx, &wg, registry.CURRENT_USER,
+	// 	`SOFTWARE\Classes\VncViewer.Config\DefaultIcon`, "", `C:\Program Files\uvnc bvba\UltraVNC\vncviewer.exe,0`, nil)
 
 	// go func() {
 	// 	time.Sleep(time.Second * 3) // test notify done
