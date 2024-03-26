@@ -26,8 +26,11 @@ import (
 
 func main() {
 	var (
-		err error
-		wg  sync.WaitGroup
+		err         error
+		wg          sync.WaitGroup
+		ProxyPacUrl = ""
+		// ProxyMode   = ""
+		key registry.Key
 	)
 	defer closer.Close()
 	ctx, ca := context.WithCancel(context.Background())
@@ -37,6 +40,24 @@ func main() {
 			let.Println(err)
 			defer os.Exit(1)
 		}
+		// key, err = registry.OpenKey(registry.LOCAL_MACHINE, `SYSTEM\ControlSet001\Services\iphlpsvc`, registry.SET_VALUE)
+		// if err == nil {
+		// 	PrintOk("Start=2", key.SetDWordValue("Start", 2))
+		// }
+		// PrintOk("iphlpsvc", iphlpsvc("start"))
+
+		key, err = registry.OpenKey(registry.CURRENT_USER, `SOFTWARE\Policies\Microsoft\Internet Explorer\Control Panel`, registry.SET_VALUE)
+		if err == nil {
+			PrintOk("Autoconfig=1", key.SetDWordValue("Autoconfig", 1))
+		}
+		PrintOk("gosysproxy", proxy(ProxyPacUrl))
+
+		// key, err = registry.OpenKey(registry.CURRENT_USER, `SOFTWARE\Policies\YandexBrowser`, registry.SET_VALUE)
+		// if err == nil {
+		// 	PrintOk("ProxyMode="+ProxyMode, key.SetStringValue("ProxyMode", ProxyMode))
+		// }
+		// PrintOk("SetDefaultBrowser", SetDefaultBrowser())
+
 		wg.Wait()
 		pressEnter()
 	})
@@ -44,14 +65,29 @@ func main() {
 	// HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Schedule\TaskCache\Tree\Microsoft\Windows\GroupPolicy\
 	// администратор через планировщик устанавливает ХОРОШИЕ значения в реестре
 	go anyWatch(ctx, &wg, registry.CURRENT_USER,
-		`SOFTWARE\Policies\Microsoft\Internet Explorer\Control Panel`, "Autoconfig", 0, func() { PrintOk("gosysproxy", proxy()) })
+		`SOFTWARE\Policies\Microsoft\Internet Explorer\Control Panel`, "Autoconfig", 0, func() { PrintOk("gosysproxy", proxy("")) })
 	// go anyWatch(ctx, &wg, registry.CURRENT_USER,
 	// 	`Software\Microsoft\Windows\CurrentVersion\Internet Settings`, "ProxyEnable", 0, func() { PrintOk("gosysproxy", proxy()) })
-	go anyWatch(ctx, &wg, registry.CURRENT_USER,
-		`Software\Microsoft\Windows\CurrentVersion\Internet Settings`, "AutoConfigURL", "", func() { PrintOk("gosysproxy", proxy()) })
 
-	go anyWatch(ctx, &wg, registry.CURRENT_USER,
-		`SOFTWARE\Policies\YandexBrowser`, "ProxyMode", "direct", nil)
+	// go anyWatch(ctx, &wg, registry.CURRENT_USER,
+	// 	`Software\Microsoft\Windows\CurrentVersion\Internet Settings`, "AutoConfigURL", "", func() { PrintOk("gosysproxy", proxy()) })
+
+	// go anyWatch(ctx, &wg, registry.LOCAL_MACHINE,
+	// 	`SYSTEM\ControlSet001\Services\iphlpsvc`, "Start", 4, func() { PrintOk("iphlpsvc", iphlpsvc("stop")) })
+
+	go anyWatch(ctx, &wg, registry.LOCAL_MACHINE,
+		`SOFTWARE\Policies\Microsoft\Windows\CurrentVersion\Internet Settings`, "ProxySettingsPerUser", 1, nil)
+
+	key, err = registry.OpenKey(registry.CURRENT_USER, `SOFTWARE\Policies\YandexBrowser`, registry.QUERY_VALUE)
+	if err == nil {
+		// ProxyMode, _, err = key.GetStringValue("ProxyMode")
+		// PrintOk("ProxyMode="+ProxyMode, err)
+		ProxyPacUrl, _, err = key.GetStringValue("ProxyPacUrl")
+		PrintOk("ProxyPacUrl="+ProxyPacUrl, err)
+	}
+	// go anyWatch(ctx, &wg, registry.CURRENT_USER,
+	// 	`SOFTWARE\Policies\YandexBrowser`, "ProxyMode", "direct", nil)
+
 	go anyWatch(ctx, &wg, registry.CURRENT_USER,
 		`SOFTWARE\Policies\Microsoft\Windows\Control Panel\Desktop`, "ScreenSaveActive", "0", nil)
 	go anyWatch(ctx, &wg, registry.CURRENT_USER,
@@ -227,8 +263,8 @@ func anyWatch(ctx context.Context, wg *sync.WaitGroup, root registry.Key,
 	}
 }
 
-func proxy() error {
-	gosysproxy.SetPAC("")
+func proxy(PAC string) error {
+	gosysproxy.SetPAC(PAC)
 	gosysproxy.Off()
 	cmd := exec.Command("netsh",
 		"winhttp",
@@ -237,4 +273,13 @@ func proxy() error {
 		"ie",
 	)
 	return cmd.Run()
+}
+
+func iphlpsvc(s string) error {
+	cmd := exec.Command("net",
+		s,
+		"iphlpsvc",
+	)
+	return cmd.Run()
+
 }
