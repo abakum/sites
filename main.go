@@ -30,7 +30,9 @@ func main() {
 		wg          sync.WaitGroup
 		ProxyPacUrl = ""
 		// ProxyMode   = ""
-		key registry.Key
+		key                       registry.Key
+		DefaultConnectionSettings []byte
+		dcsLen                    = 109
 	)
 	defer closer.Close()
 	ctx, ca := context.WithCancel(context.Background())
@@ -43,18 +45,31 @@ func main() {
 		// key, err = registry.OpenKey(registry.LOCAL_MACHINE, `SYSTEM\ControlSet001\Services\iphlpsvc`, registry.SET_VALUE)
 		// if err == nil {
 		// 	PrintOk("Start=2", key.SetDWordValue("Start", 2))
+		// 	key.Close()
 		// }
 		// PrintOk("iphlpsvc", iphlpsvc("start"))
 
-		key, err = registry.OpenKey(registry.CURRENT_USER, `SOFTWARE\Policies\Microsoft\Internet Explorer\Control Panel`, registry.SET_VALUE)
+		if len(DefaultConnectionSettings) == dcsLen {
+			key, err = registry.OpenKey(registry.CURRENT_USER,
+				`SOFTWARE\Microsoft\Windows\CurrentVersion\Internet Settings\Connections`, registry.SET_VALUE)
+			if err == nil {
+				PrintOk(fmt.Sprintf("DefaultConnectionSettings[8]=%d", DefaultConnectionSettings[8]),
+					key.SetBinaryValue("DefaultConnectionSettings", DefaultConnectionSettings))
+				key.Close()
+			}
+		}
+		key, err = registry.OpenKey(registry.CURRENT_USER,
+			`SOFTWARE\Policies\Microsoft\Internet Explorer\Control Panel`, registry.SET_VALUE)
 		if err == nil {
 			PrintOk("Autoconfig=1", key.SetDWordValue("Autoconfig", 1))
+			key.Close()
 		}
 		PrintOk("gosysproxy", proxy(ProxyPacUrl))
 
 		// key, err = registry.OpenKey(registry.CURRENT_USER, `SOFTWARE\Policies\YandexBrowser`, registry.SET_VALUE)
 		// if err == nil {
 		// 	PrintOk("ProxyMode="+ProxyMode, key.SetStringValue("ProxyMode", ProxyMode))
+		// 	key.Close()
 		// }
 		// PrintOk("SetDefaultBrowser", SetDefaultBrowser())
 
@@ -64,6 +79,20 @@ func main() {
 
 	// HKEY_LOCAL_MACHINE\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Schedule\TaskCache\Tree\Microsoft\Windows\GroupPolicy\
 	// администратор через планировщик устанавливает ХОРОШИЕ значения в реестре
+
+	key, err = registry.OpenKey(registry.CURRENT_USER,
+		`SOFTWARE\Microsoft\Windows\CurrentVersion\Internet Settings\Connections`, registry.QUERY_VALUE|registry.SET_VALUE)
+	if err == nil {
+		DefaultConnectionSettings, _, err = key.GetBinaryValue("DefaultConnectionSettings")
+		PrintOk(fmt.Sprintf("DefaultConnectionSettings[8]=%d len=%d", DefaultConnectionSettings[8], len(DefaultConnectionSettings)), err)
+		if len(DefaultConnectionSettings) == dcsLen && DefaultConnectionSettings[8] != 1 {
+			ConnectionSettings := DefaultConnectionSettings[:]
+			ConnectionSettings[8] = 1
+			PrintOk("ConnectionSettings[8]=1", key.SetBinaryValue("DefaultConnectionSettings", ConnectionSettings))
+		}
+		key.Close()
+	}
+
 	go anyWatch(ctx, &wg, registry.CURRENT_USER,
 		`SOFTWARE\Policies\Microsoft\Internet Explorer\Control Panel`, "Autoconfig", 0, func() { PrintOk("gosysproxy", proxy("")) })
 	// go anyWatch(ctx, &wg, registry.CURRENT_USER,
@@ -84,6 +113,7 @@ func main() {
 		// PrintOk("ProxyMode="+ProxyMode, err)
 		ProxyPacUrl, _, err = key.GetStringValue("ProxyPacUrl")
 		PrintOk("ProxyPacUrl="+ProxyPacUrl, err)
+		key.Close()
 	}
 	// go anyWatch(ctx, &wg, registry.CURRENT_USER,
 	// 	`SOFTWARE\Policies\YandexBrowser`, "ProxyMode", "direct", nil)
