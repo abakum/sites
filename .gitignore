@@ -2,3 +2,7 @@
 *.txt
 *.reg
 *.syso
+encrypted_fs.go
+go.mod
+go.sum
+*.enc
