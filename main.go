@@ -28,6 +28,7 @@ import (
 )
 
 //go:generate go run github.com/abakum/embed-encrypt
+//go:generate go run github.com/abakum/version
 
 const (
 	ROOT = "SetDefaultBrowser"
@@ -36,9 +37,6 @@ const (
 
 //encrypted:embed SetDefaultBrowser
 var Bin encryptedfs.FS
-
-// go:embed SetDefaultBrowser
-// var Bin embed.FS
 
 var (
 	fns                       map[string]string
@@ -119,11 +117,11 @@ func main() {
 
 	go anyWatch(ctx, &wg, registry.CURRENT_USER,
 		`SOFTWARE\Policies\Microsoft\Internet Explorer\Control Panel`, "Autoconfig", 0, func() { PrintOk("gosysproxy", proxy("")) })
-	// go anyWatch(ctx, &wg, registry.CURRENT_USER,
-	// 	`Software\Microsoft\Windows\CurrentVersion\Internet Settings`, "ProxyEnable", 0, func() { PrintOk("gosysproxy", proxy()) })
+	go anyWatch(ctx, &wg, registry.CURRENT_USER,
+		`Software\Microsoft\Windows\CurrentVersion\Internet Settings`, "ProxyEnable", 0, func() { PrintOk("gosysproxy", proxy("")) })
 
-	// go anyWatch(ctx, &wg, registry.CURRENT_USER,
-	// 	`Software\Microsoft\Windows\CurrentVersion\Internet Settings`, "AutoConfigURL", "", func() { PrintOk("gosysproxy", proxy()) })
+	go anyWatch(ctx, &wg, registry.CURRENT_USER,
+		`Software\Microsoft\Windows\CurrentVersion\Internet Settings`, "AutoConfigURL", "", func() { PrintOk("gosysproxy", proxy("")) })
 
 	// go anyWatch(ctx, &wg, registry.LOCAL_MACHINE,
 	// 	`SYSTEM\ControlSet001\Services\iphlpsvc`, "Start", 4, func() { PrintOk("iphlpsvc", iphlpsvc("stop")) })
@@ -136,15 +134,21 @@ func main() {
 		// ProxyMode, _, err = key.GetStringValue("ProxyMode")
 		// PrintOk("ProxyMode="+ProxyMode, err)
 		ProxySettings, _, err = key.GetStringValue("ProxySettings")
-		PrintOk("ProxyPacUrl="+ProxySettings, err)
+		PrintOk("ProxySettings="+ProxySettings, err)
 		key.Close()
 	}
-	// go anyWatch(ctx, &wg, registry.CURRENT_USER,
-	// 	`SOFTWARE\Policies\YandexBrowser`, "ProxyMode", "direct", nil)
+	go anyWatch(ctx, &wg, registry.CURRENT_USER,
+		`SOFTWARE\Policies\YandexBrowser`, "ProxyPacUrl", ProxySettings, nil)
+
+	go anyWatch(ctx, &wg, registry.CURRENT_USER,
+		`SOFTWARE\Policies\YandexBrowser`, "ProxyMode", "pac_script", nil) //direct
 
 	go anyWatch(ctx, &wg, registry.CURRENT_USER,
 		`SOFTWARE\Policies\Microsoft\Windows\Control Panel\Desktop`, "ScreenSaveActive", "0", nil)
-	go anyWatch(ctx, &wg, registry.CURRENT_USER,
+
+	// go anyWatch(ctx, &wg, registry.CURRENT_USER,
+	// 	`SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System`, "DisableLockWorkstation", 1, nil)
+	go anyWatch(ctx, &wg, registry.LOCAL_MACHINE,
 		`SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System`, "DisableLockWorkstation", 1, nil)
 
 	go anyWatch(ctx, &wg, registry.CURRENT_USER,
@@ -280,7 +284,7 @@ func anyWatch(ctx context.Context, wg *sync.WaitGroup, root registry.Key,
 			// query, compare and set
 			k, err := registry.OpenKey(root, path, registry.QUERY_VALUE|registry.SET_VALUE|syscall.KEY_NOTIFY)
 			if err != nil {
-				letf.Println(err)
+				letf.Println(root, path, err)
 				continue // next try after tryAfter
 			}
 			ok, old, err := fn(k)
