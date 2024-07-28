@@ -2,6 +2,8 @@ github.com/Trisia/gosysproxy v1.0.0 h1:T0AR96Ioj18c3+oPs2ptNeLq54PfMqcaKrPm/J4/o
 github.com/Trisia/gosysproxy v1.0.0/go.mod h1:PTPPgpRpyTJEL/FMxEE2OcQcGNbUm961xZcgihwraZM=
 github.com/abakum/embed-encrypt v0.0.1 h1:1kG2vOZQfchsOLttvZoGmv42b2c3UmckkOYdbnqbs58=
 github.com/abakum/embed-encrypt v0.0.1/go.mod h1:f2J6T21Ou8GFGrgxnJY1a49ZInLvZQQgZCf7xaPpmus=
+github.com/abakum/version v0.1.4-lw h1:ynPFVpY+6xuIAmkvrbSaWwwNhbcW2QlqhPGHMSGIBfA=
+github.com/abakum/version v0.1.4-lw/go.mod h1:v/GcSOIBPOVwI7Mk7sKiMGih9sQH1tWdfpzF6VPW/ws=
 github.com/xlab/closer v1.1.0 h1:yrDiOXjd/B7pZ3lZkl/EZ1gWrR2M2N5XpBnixynm4mc=
 github.com/xlab/closer v1.1.0/go.mod h1:Ff8YcUPbn5jju6nClrMCmJHQABM0S/obEK0za/1yVMk=
 golang.org/x/sys v0.10.0 h1:SqMFp9UcQJZa+pmYuAKjd9xq1f0j5rLcDIk0mj4qAsA=

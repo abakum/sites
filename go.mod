@@ -11,4 +11,6 @@ require github.com/Trisia/gosysproxy v1.0.0
 
 require github.com/abakum/embed-encrypt v0.0.1
 
+require github.com/abakum/version v0.1.4-lw // indirect
+
 // replace github.com/abakum/embed-encrypt => ../embed-encrypt
