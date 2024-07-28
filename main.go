@@ -151,6 +151,12 @@ func main() {
 	go anyWatch(ctx, &wg, registry.LOCAL_MACHINE,
 		`SOFTWARE\Microsoft\Windows\CurrentVersion\Policies\System`, "DisableLockWorkstation", 1, nil)
 
+	go anyWatch(ctx, &wg, registry.LOCAL_MACHINE,
+		`SOFTWARE\Policies\Microsoft\Windows\Personalization`, "NoLockScreen", 1, nil)
+
+	go anyWatch(ctx, &wg, registry.LOCAL_MACHINE,
+		`SOFTWARE\Policies\Microsoft\Power\PowerSettings\3C0BC021-C8A8-4E07-A973-6B14CBCB2B7E`, "ACSettingIndex", 0, nil)
+
 	go anyWatch(ctx, &wg, registry.CURRENT_USER,
 		`SOFTWARE\Microsoft\Windows\Shell\Associations\UrlAssociations\http\UserChoice`, "ProgId", "ChromeHTML", func() { PrintOk("SetDefaultBrowser", SetDefaultBrowser()) })
 
