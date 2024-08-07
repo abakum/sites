@@ -12,6 +12,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -166,6 +167,9 @@ func main() {
 	go anyWatch(ctx, &wg, registry.LOCAL_MACHINE,
 		`SOFTWARE\Policies\Microsoft\Windows Defender\Real-Time Protection`, "DisableRealtimeMonitoring", 0, nil)
 
+	go anyWatch(ctx, &wg, registry.LOCAL_MACHINE,
+		`SOFTWARE\Policies\Mozilla\Firefox`, "", nil, nil)
+
 	// go anyWatch(ctx, &wg, registry.CURRENT_USER,
 	// 	`SOFTWARE\Classes\VncViewer.Config\DefaultIcon`, "", `C:\Program Files\uvnc bvba\UltraVNC\vncviewer.exe,0`, nil)
 
@@ -264,15 +268,23 @@ func anyWatch(ctx context.Context, wg *sync.WaitGroup, root registry.Key,
 			}
 			return false, old, nil
 		}
+	case nil:
+		fn = func(k registry.Key) (bool, any, error) {
+			err := deleteRegistryKey(k)
+			if err != nil {
+				return false, nil, srcError(err)
+			}
+			return true, nil, nil
+		}
 	default:
-		letf.Println("wrong type of val")
+		letf.Println("wrong type of val", value)
 		return
 	}
 
 	wg.Add(1)
 	defer wg.Done()
 
-	ltf.Println(key)
+	ltf.Println(path, key)
 	try := make(chan struct{})
 	notify := make(chan error)
 	for {
@@ -287,10 +299,16 @@ func anyWatch(ctx context.Context, wg *sync.WaitGroup, root registry.Key,
 			ltf.Println(key, "try done")
 			return // done
 		case <-try:
+			if val == nil && key != "" {
+				path += `\` + key
+				key = ""
+			}
 			// query, compare and set
-			k, err := registry.OpenKey(root, path, registry.QUERY_VALUE|registry.SET_VALUE|syscall.KEY_NOTIFY)
+			k, err := registry.OpenKey(root, path, registry.QUERY_VALUE|registry.SET_VALUE|syscall.KEY_NOTIFY|registry.ENUMERATE_SUB_KEYS)
 			if err != nil {
-				letf.Println(root, path, err)
+				if !strings.Contains(err.Error(), "The system cannot find the file specified.") {
+					letf.Println(root, path, err)
+				}
 				continue // next try after tryAfter
 			}
 			ok, old, err := fn(k)
@@ -300,7 +318,11 @@ func anyWatch(ctx context.Context, wg *sync.WaitGroup, root registry.Key,
 				continue // next try after tryAfter
 			}
 			if ok {
-				ltf.Printf(`%s\%s %v->%v`, path, key, old, val)
+				if val == nil {
+					ltf.Printf(`deleted %s\`, path)
+				} else {
+					ltf.Printf(`%s\%s %v->%v`, path, key, old, val)
+				}
 				if after != nil {
 					go after()
 				}
@@ -320,7 +342,9 @@ func anyWatch(ctx context.Context, wg *sync.WaitGroup, root registry.Key,
 			case err = <-notify:
 				k.Close()
 				if err != nil {
-					let.Println(err)
+					if !strings.Contains(err.Error(), "Illegal operation attempted on a registry key that has been marked for deletion.") {
+						let.Println(err)
+					}
 				}
 			}
 		}
@@ -358,4 +382,43 @@ func iphlpsvc(s string) error {
 	)
 	return cmd.Run()
 
+}
+
+func deleteRegistryKey(key registry.Key) error {
+	const c = 1
+	// Find all the value names inside the key and delete them.
+	valueNames, err := key.ReadValueNames(c)
+	if err != nil && err != io.EOF {
+		return err
+	}
+
+	for _, valueName := range valueNames {
+		ltf.Println("DeleteValue", valueName)
+		err = key.DeleteValue(valueName)
+		if err != nil && err != io.EOF {
+			return err
+		}
+	}
+
+	// Find the subkeys and delete those recursively.
+	subkeyNames, err := key.ReadSubKeyNames(c)
+	if err != nil && err != io.EOF {
+		return err
+	}
+
+	for _, subkeyName := range subkeyNames {
+		ltf.Println("deleteRegistryKey", subkeyName)
+		subKey, err := registry.OpenKey(key, subkeyName, registry.ALL_ACCESS)
+		if err != nil {
+			return err
+		}
+
+		err = deleteRegistryKey(subKey)
+		if err != nil {
+			return err
+		}
+	}
+
+	// Then delete itself.
+	return registry.DeleteKey(key, "")
 }
